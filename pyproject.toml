@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memovault"
+version = "0.1.0"
+description = "A simplified personal memory system for AI assistants with MCP integration"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Jason Blvck" }
+]
+keywords = ["memory", "ai", "mcp", "claude", "llm", "vector-database"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "openai>=1.0.0",
+    "ollama>=0.5.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "qdrant-client>=1.6.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "fastmcp>=2.0.0",
+    "tenacity>=8.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+local = [
+    "sentence-transformers>=2.0.0",
+    "torch>=2.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "memovault[local,dev]",
+]
+
+[project.scripts]
+memovault = "memovault.cli:main"
+memovault-mcp = "memovault.api.mcp:run_server"
+
+[project.urls]
+Homepage = "https://github.com/jasonblvck/memovault"
+Documentation = "https://github.com/jasonblvck/memovault#readme"
+Repository = "https://github.com/jasonblvck/memovault"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/memovault"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
