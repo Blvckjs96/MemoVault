@@ -44,6 +44,8 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: memovault-qdrant
+    profiles:
+      - vector
     ports:
       - "6335:6333"
     volumes:
@@ -61,6 +63,8 @@ services:
   memovault:
     build: .
     container_name: memovault-server
+    profiles:
+      - vector
     ports:
       - "8080:8080"
     environment:
