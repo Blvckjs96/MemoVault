@@ -6,6 +6,8 @@ services:
       - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
+    networks:
+      - memovault-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "ollama", "list"]
@@ -16,7 +18,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 12G
 
   # Model initialization service (runs once to pull required models)
   ollama-init:
@@ -30,11 +32,100 @@ services:
       - |
         echo "Pulling required models..."
         ollama pull llama3.1:latest
+        ollama pull qwen2.5:3b
         ollama pull nomic-embed-text:latest
         echo "Models ready!"
     environment:
       - OLLAMA_HOST=ollama:11434
+    networks:
+      - memovault-net
     restart: "no"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: memovault-qdrant
+    ports:
+      - "6335:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - memovault-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  memovault:
+    build: .
+    container_name: memovault-server
+    ports:
+      - "8080:8080"
+    environment:
+      - MEMOVAULT_LLM_BACKEND=ollama
+      - MEMOVAULT_OLLAMA_MODEL=llama3.1:latest
+      - MEMOVAULT_OLLAMA_API_BASE=http://ollama:11434
+      - MEMOVAULT_EMBEDDER_BACKEND=ollama
+      - MEMOVAULT_EMBEDDER_OLLAMA_MODEL=nomic-embed-text:latest
+      - MEMOVAULT_MEMORY_BACKEND=vector
+      - MEMOVAULT_QDRANT_MODE=server
+      - MEMOVAULT_QDRANT_HOST=qdrant
+      - MEMOVAULT_QDRANT_PORT=6333
+      - MEMOVAULT_QDRANT_VECTOR_DIM=768
+      - MEMOVAULT_DATA_DIR=/app/memovault_data
+      - MEMOVAULT_AUTO_SCORE=true
+      - MEMOVAULT_IMPORTANCE_THRESHOLD=5
+      - MEMOVAULT_SCORER_OLLAMA_MODEL=qwen2.5:3b
+      - MEMOVAULT_LTM_BASE_THRESHOLD=2.0
+      - MEMOVAULT_STM_ENABLED=true
+      - MEMOVAULT_PROMOTION_RECALL_THRESHOLD=3
+    volumes:
+      - memovault_data:/app/memovault_data
+    depends_on:
+      ollama:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    networks:
+      - memovault-net
+    restart: unless-stopped
+
+  # Lightweight deployment: simple backend (BM25), no Qdrant needed
+  memovault-simple:
+    build: .
+    container_name: memovault-simple
+    profiles:
+      - simple
+    ports:
+      - "8080:8080"
+    environment:
+      - MEMOVAULT_LLM_BACKEND=ollama
+      - MEMOVAULT_OLLAMA_MODEL=llama3.1:latest
+      - MEMOVAULT_OLLAMA_API_BASE=http://ollama:11434
+      - MEMOVAULT_MEMORY_BACKEND=simple
+      - MEMOVAULT_DATA_DIR=/app/memovault_data
+      - MEMOVAULT_AUTO_SCORE=true
+      - MEMOVAULT_IMPORTANCE_THRESHOLD=5
+      - MEMOVAULT_SCORER_OLLAMA_MODEL=qwen2.5:3b
+      - MEMOVAULT_LTM_BASE_THRESHOLD=2.0
+      - MEMOVAULT_STM_ENABLED=true
+      - MEMOVAULT_PROMOTION_RECALL_THRESHOLD=3
+    volumes:
+      - memovault_data:/app/memovault_data
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - memovault-net
+    restart: unless-stopped
+
+networks:
+  memovault-net:
+    driver: bridge
 
 volumes:
   ollama_data:
+  qdrant_data:
+  memovault_data:
