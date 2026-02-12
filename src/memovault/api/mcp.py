@@ -463,7 +463,7 @@ class MemoVaultMCPServer:
             **kwargs: Additional arguments for HTTP/SSE transport (host, port)
         """
         if transport == "stdio":
-            self.mcp.run(transport="stdio")
+            self.mcp.run(transport="stdio", show_banner=False)
         elif transport == "http":
             host = kwargs.get("host", "localhost")
             port = kwargs.get("port", 8000)
