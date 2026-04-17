@@ -55,11 +55,41 @@ class Settings(BaseSettings):
     data_dir: str = Field(default="./memovault_data")
 
     # API Settings
-    api_host: str = Field(default="0.0.0.0")
+    # Bind to localhost by default — prevents network-accessible exposure.
+    # Set MEMOVAULT_API_HOST=0.0.0.0 explicitly to expose on the network.
+    api_host: str = Field(default="127.0.0.1")
     api_port: int = Field(default=8080)
+
+    # Intelligence Layer
+    auto_score: bool = Field(default=True)
+    importance_threshold: int = Field(default=5)
+    scorer_ollama_model: str = Field(default="")
+    scorer_openai_model: str = Field(default="")
+
+    # STM/LTM Settings
+    ltm_base_threshold: float = Field(
+        default=2.0, description="Base threshold for LTM candidate admission"
+    )
+    ltm_max_capacity: int = Field(
+        default=10000, description="Max LTM capacity for memory pressure calculation"
+    )
+    stm_enabled: bool = Field(
+        default=True, description="Enable short-term memory"
+    )
+    promotion_recall_threshold: int = Field(
+        default=3, description="Recall count required to promote candidate to LTM"
+    )
 
     # Logging
     log_level: str = Field(default="INFO")
+
+    def validate_credentials(self) -> None:
+        """Raise ValueError if required credentials are missing for the chosen backend."""
+        if self.llm_backend == "openai" and not self.openai_api_key:
+            raise ValueError(
+                "MEMOVAULT_OPENAI_API_KEY must be set when MEMOVAULT_LLM_BACKEND=openai. "
+                "Add it to your .env file or environment."
+            )
 
     @property
     def data_path(self) -> Path:

@@ -84,6 +84,7 @@ class MemoVaultMCPServer:
             top_k: int = 5,
             memory_type: str | None = None,
             source: str | None = None,
+            max_age_days: int | None = None,
         ) -> dict[str, Any]:
             """Search for relevant memories.
 
@@ -108,7 +109,7 @@ class MemoVaultMCPServer:
                 if filter_dict:
                     kwargs["filter"] = filter_dict
 
-                results = self.vault.search(query, top_k, **kwargs)
+                results = self.vault.search(query, top_k, max_age_days=max_age_days, **kwargs)
                 return {
                     "memories": [
                         {

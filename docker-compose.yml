@@ -32,7 +32,7 @@ services:
       - |
         echo "Pulling required models..."
         ollama pull llama3.1:latest
-        ollama pull qwen2.5:3b
+        ollama pull qwen2.5-coder:3b
         ollama pull nomic-embed-text:latest
         echo "Models ready!"
     environment:
@@ -81,7 +81,7 @@ services:
       - MEMOVAULT_DATA_DIR=/app/memovault_data
       - MEMOVAULT_AUTO_SCORE=true
       - MEMOVAULT_IMPORTANCE_THRESHOLD=5
-      - MEMOVAULT_SCORER_OLLAMA_MODEL=qwen2.5:3b
+      - MEMOVAULT_SCORER_OLLAMA_MODEL=qwen2.5-coder:3b
       - MEMOVAULT_LTM_BASE_THRESHOLD=2.0
       - MEMOVAULT_STM_ENABLED=true
       - MEMOVAULT_PROMOTION_RECALL_THRESHOLD=3
@@ -112,7 +112,7 @@ services:
       - MEMOVAULT_DATA_DIR=/app/memovault_data
       - MEMOVAULT_AUTO_SCORE=true
       - MEMOVAULT_IMPORTANCE_THRESHOLD=5
-      - MEMOVAULT_SCORER_OLLAMA_MODEL=qwen2.5:3b
+      - MEMOVAULT_SCORER_OLLAMA_MODEL=qwen2.5-coder:3b
       - MEMOVAULT_LTM_BASE_THRESHOLD=2.0
       - MEMOVAULT_STM_ENABLED=true
       - MEMOVAULT_PROMOTION_RECALL_THRESHOLD=3

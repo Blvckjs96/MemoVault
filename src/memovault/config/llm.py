@@ -59,3 +59,29 @@ class LLMConfig(BaseConfig):
                 max_tokens=settings.llm_max_tokens,
             )
         return cls(backend=settings.llm_backend, config=config)
+
+    @classmethod
+    def for_scorer(cls, settings: Any) -> "LLMConfig | None":
+        """Create a separate LLM config for the scorer (fast model).
+
+        Returns None if no scorer model is configured, meaning the
+        main LLM should be used instead.
+        """
+        if settings.llm_backend == "ollama" and settings.scorer_ollama_model:
+            config = OllamaLLMConfig(
+                model_name_or_path=settings.scorer_ollama_model,
+                api_base=settings.ollama_api_base,
+                temperature=0.3,
+                max_tokens=512,
+            )
+            return cls(backend="ollama", config=config)
+        elif settings.llm_backend == "openai" and settings.scorer_openai_model:
+            config = OpenAILLMConfig(
+                model_name_or_path=settings.scorer_openai_model,
+                api_key=settings.openai_api_key,
+                api_base=settings.openai_api_base,
+                temperature=0.3,
+                max_tokens=512,
+            )
+            return cls(backend="openai", config=config)
+        return None
