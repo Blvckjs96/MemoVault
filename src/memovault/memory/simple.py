@@ -4,6 +4,8 @@ import json
 import os
 from typing import Any
 
+from rank_bm25 import BM25Okapi
+
 from memovault.config.memory import SimpleMemoryConfig
 from memovault.memory.base import BaseTextMemory
 from memovault.memory.item import MemoryItem
@@ -15,7 +17,7 @@ logger = get_logger(__name__)
 class SimpleMemory(BaseTextMemory):
     """Simple JSON-based memory implementation.
 
-    Uses basic word overlap for search (no vector embeddings).
+    Uses BM25 ranking for search (no vector embeddings).
     Good for lightweight use cases or when embeddings aren't available.
     """
 
@@ -54,29 +56,34 @@ class SimpleMemory(BaseTextMemory):
         return added_ids
 
     def search(self, query: str, top_k: int = 5, **kwargs) -> list[MemoryItem]:
-        """Search for memories using word overlap.
+        """Search for memories using BM25 ranking.
 
         Args:
             query: Search query.
             top_k: Number of results to return.
 
         Returns:
-            List of matching memories.
+            List of matching memories ranked by BM25 relevance.
         """
-        query_words = set(query.lower().split())
+        if not self.memories:
+            return []
 
-        # Calculate word overlap score for each memory
-        scored = []
-        for memory in self.memories:
-            memory_words = set(memory["memory"].lower().split())
-            overlap = len(query_words & memory_words)
-            if overlap > 0:
-                scored.append((memory, overlap))
+        # Tokenize all memories for BM25
+        corpus = [mem["memory"].lower().split() for mem in self.memories]
+        bm25 = BM25Okapi(corpus)
 
-        # Sort by score descending
+        # Score query against corpus
+        query_tokens = query.lower().split()
+        scores = bm25.get_scores(query_tokens)
+
+        # Pair memories with scores, filter out zero-score results
+        scored = [
+            (mem, score)
+            for mem, score in zip(self.memories, scores)
+            if score > 0
+        ]
         scored.sort(key=lambda x: x[1], reverse=True)
 
-        # Return top_k results
         return [MemoryItem(**mem) for mem, _ in scored[:top_k]]
 
     def get(self, memory_id: str) -> MemoryItem | None:

@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemoVault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07070e;
+      --surface:   #0d0d18;
+      --surface2:  #12121f;
+      --surface3:  #18182a;
+      --border:    #1f1f35;
+      --border2:   #2a2a45;
+      --text:      #c4c4de;
+      --text-dim:  #7070a0;
+      --text-muted:#404060;
+      --accent:    #7b6fdd;
+      --accent-glow: rgba(123,111,221,0.18);
+      --blue:      #4c9df7;
+      --green:     #34d399;
+      --amber:     #f59e0b;
+      --red:       #f87171;
+      --pink:      #e879a0;
+      --teal:      #2dd4bf;
+      --r:         8px;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7,7,14,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+      color: #e0e0f0;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--blue) 100%);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s;
+    }
+    .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.offline { background: var(--red); }
+
+    .refresh-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-switch {
+      width: 32px;
+      height: 18px;
+      background: var(--border2);
+      border-radius: 9px;
+      position: relative;
+      transition: background 0.2s;
+    }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch.on::after { transform: translateX(14px); }
+
+    .last-updated {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 24px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Section headings ── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+
+    /* ── Stat grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--border2); }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, var(--glow-color, transparent) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .stat-card.accent { --glow-color: var(--accent-glow); }
+    .stat-card.blue   { --glow-color: rgba(76,157,247,0.12); }
+    .stat-card.green  { --glow-color: rgba(52,211,153,0.1); }
+    .stat-card.amber  { --glow-color: rgba(245,158,11,0.1); }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      color: #e4e4f4;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-sub {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ── Charts row ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+
+    .chart-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    .chart-container {
+      position: relative;
+    }
+
+    .donut-wrap {
+      max-width: 200px;
+      margin: 0 auto;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .legend-left { display: flex; align-items: center; gap: 8px; }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legend-label { color: var(--text-dim); }
+    .legend-count { color: var(--text); font-variant-numeric: tabular-nums; }
+
+    /* ── Token Economics ── */
+    .token-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+
+    .token-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 700px) { .token-grid { grid-template-columns: 1fr; } }
+
+    .token-metric { }
+
+    .token-metric-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .token-metric-value {
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      color: #e4e4f4;
+    }
+
+    .efficiency-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .efficiency-badge.great { background: rgba(52,211,153,0.15); color: var(--green); }
+    .efficiency-badge.ok    { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .efficiency-badge.poor  { background: rgba(248,113,113,0.12); color: var(--red); }
+    .efficiency-badge.none  { background: var(--surface3); color: var(--text-muted); }
+
+    .token-bar-section { }
+
+    .token-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .token-bar-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      width: 100px;
+      flex-shrink: 0;
+    }
+
+    .token-bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--surface3);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .token-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.16,1,0.3,1);
+    }
+    .token-bar-fill.discovery { background: linear-gradient(90deg, var(--accent), var(--blue)); }
+    .token-bar-fill.read      { background: linear-gradient(90deg, var(--green), var(--teal)); }
+
+    .token-bar-num {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      font-family: 'JetBrains Mono', monospace;
+      width: 60px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .token-note {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ── Two-column bottom ── */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .bottom-row { grid-template-columns: 1fr; } }
+
+    /* ── Table ── */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .table-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-dim);
+      letter-spacing: 0.02em;
+    }
+
+    .table-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+
+    tbody td {
+      padding: 11px 16px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .mem-content {
+      max-width: 360px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    .badge-fact        { background: rgba(76,157,247,0.15); color: var(--blue); }
+    .badge-preference  { background: rgba(123,111,221,0.15); color: var(--accent); }
+    .badge-event       { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .badge-opinion     { background: rgba(232,121,160,0.15); color: var(--pink); }
+    .badge-procedure   { background: rgba(52,211,153,0.15); color: var(--green); }
+    .badge-personal    { background: rgba(45,212,191,0.15); color: var(--teal); }
+    .badge-project_context { background: rgba(248,113,113,0.15); color: var(--red); }
+    .badge-untyped     { background: var(--surface3); color: var(--text-muted); }
+
+    .badge-promoted  { background: rgba(52,211,153,0.12); color: var(--green); }
+    .badge-candidate { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .badge-legacy    { background: var(--surface3); color: var(--text-muted); }
+
+    /* ── STM Cards ── */
+    .stm-card-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .stm-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stm-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+
+    .stm-item {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .stm-item:last-child { border-bottom: none; }
+    .stm-item:hover { background: var(--surface2); }
+
+    .stm-item-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .stm-category {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .stm-decay {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+    .stm-decay.urgent { color: var(--amber); }
+
+    .stm-content {
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .stm-utility {
+      display: flex;
+      gap: 3px;
+      margin-top: 8px;
+    }
+
+    .utility-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--border2);
+    }
+    .utility-dot.filled { background: var(--accent); }
+
+    .badge-constraint { background: rgba(248,113,113,0.12); color: var(--red); }
+    .badge-goal       { background: rgba(52,211,153,0.12); color: var(--green); }
+    .badge-definition { background: rgba(76,157,247,0.12); color: var(--blue); }
+    .badge-assumption { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .badge-environment{ background: rgba(45,212,191,0.12); color: var(--teal); }
+
+    /* ── Score pill ── */
+    .score-pill {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+    }
+
+    /* ── Loading skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ── Error banner ── */
+    .error-banner {
+      display: none;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: var(--r);
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--red);
+    }
+    .error-banner.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⬡</div>
+    MemoVault
+  </div>
+  <div class="header-right">
+    <div class="status-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">connecting…</span>
+    </div>
+    <div class="refresh-toggle" id="refreshToggle">
+      <div class="toggle-switch on" id="toggleSwitch"></div>
+      <span>Auto-refresh</span>
+    </div>
+    <span class="last-updated" id="lastUpdated">—</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <!-- ── Stats row ── -->
+  <div class="stats-grid">
+    <div class="stat-card accent">
+      <div class="stat-label">Total Memories</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub" id="statBackend">—</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">LTM Promoted</div>
+      <div class="stat-value" id="statPromoted">—</div>
+      <div class="stat-sub" id="statPromotedPct">—</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">LTM Candidates</div>
+      <div class="stat-value" id="statCandidates">—</div>
+      <div class="stat-sub" id="statThreshold">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">STM Active</div>
+      <div class="stat-value" id="statStm">—</div>
+      <div class="stat-sub" id="statAutoScore">—</div>
+    </div>
+  </div>
+
+  <!-- ── Charts ── -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Memory Types</div>
+      <div class="chart-container donut-wrap">
+        <canvas id="typesChart" width="200" height="200"></canvas>
+      </div>
+      <div class="legend" id="typesLegend"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">LTM Lifecycle Distribution</div>
+      <div class="chart-container" style="height:220px">
+        <canvas id="lifecycleChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Token Economics ── -->
+  <div class="token-section">
+    <p class="section-title">Token Economics</p>
+    <div class="token-grid">
+      <div class="token-metric">
+        <div class="token-metric-label">Discovery Tokens</div>
+        <div class="token-metric-value" id="tokenDiscovery">—</div>
+        <div style="margin-top:4px; font-size:11px; color:var(--text-muted)">spent on search queries</div>
+      </div>
+      <div class="token-metric">
+        <div class="token-metric-label">Read Tokens</div>
+        <div class="token-metric-value" id="tokenRead">—</div>
+        <div style="margin-top:4px; font-size:11px; color:var(--text-muted)">injected as context</div>
+      </div>
+      <div class="token-metric">
+        <div class="token-metric-label">Efficiency</div>
+        <div class="token-metric-value" id="tokenEfficiency">—</div>
+        <div style="margin-top:4px;" id="tokenBadge"><span class="efficiency-badge none">no data</span></div>
+      </div>
+    </div>
+    <div class="token-bar-section">
+      <div class="token-bar-row">
+        <span class="token-bar-label">Discovery</span>
+        <div class="token-bar-track">
+          <div class="token-bar-fill discovery" id="barDiscovery" style="width:0%"></div>
+        </div>
+        <span class="token-bar-num" id="barDiscoveryNum">0</span>
+      </div>
+      <div class="token-bar-row">
+        <span class="token-bar-label">Context Read</span>
+        <div class="token-bar-track">
+          <div class="token-bar-fill read" id="barRead" style="width:0%"></div>
+        </div>
+        <span class="token-bar-num" id="barReadNum">0</span>
+      </div>
+    </div>
+    <p class="token-note">Estimated from character count (4 chars ≈ 1 token). Resets on server restart.</p>
+  </div>
+
+  <!-- ── Bottom row ── -->
+  <div class="bottom-row">
+
+    <!-- Recent memories table -->
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Recent Memories</span>
+        <span class="table-count" id="memCount">—</span>
+      </div>
+      <div id="memoriesTable">
+        <div class="empty-state">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Active STM -->
+    <div class="stm-card-list">
+      <div class="stm-header">
+        <span class="stm-title">Active STM</span>
+        <span class="table-count" id="stmCount">—</span>
+      </div>
+      <div id="stmList">
+        <div class="empty-state">Loading…</div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  // ── Config ──────────────────────────────────────────────
+  const API = '';  // same origin
+  let autoRefresh = true;
+  let refreshTimer = null;
+  const REFRESH_INTERVAL = 6000;
+
+  // ── Chart instances ──────────────────────────────────────
+  let typesChart = null;
+  let lifecycleChart = null;
+
+  const PALETTE = {
+    fact:            '#4c9df7',
+    preference:      '#7b6fdd',
+    event:           '#f59e0b',
+    opinion:         '#e879a0',
+    procedure:       '#34d399',
+    personal:        '#2dd4bf',
+    project_context: '#f87171',
+    untyped:         '#404060',
+  };
+
+  const CATEGORY_COLORS = {
+    constraint:  '#f87171',
+    goal:        '#34d399',
+    definition:  '#4c9df7',
+    assumption:  '#f59e0b',
+    environment: '#2dd4bf',
+  };
+
+  Chart.defaults.color = '#7070a0';
+  Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+  Chart.defaults.font.size = 11;
+
+  // ── Toggle ──────────────────────────────────────────────
+  document.getElementById('refreshToggle').addEventListener('click', () => {
+    autoRefresh = !autoRefresh;
+    const sw = document.getElementById('toggleSwitch');
+    sw.classList.toggle('on', autoRefresh);
+    if (autoRefresh) scheduleRefresh();
+    else clearTimeout(refreshTimer);
+  });
+
+  // ── Utils ────────────────────────────────────────────────
+  function fmt(n) { return n == null ? '—' : n.toLocaleString(); }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) +
+             ' ' + d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+    } catch { return iso; }
+  }
+
+  // Allowlist for CSS class suffixes — prevents class-injection from crafted type values
+  const KNOWN_TYPES = new Set(['fact','preference','event','opinion','procedure','personal','project_context']);
+  const KNOWN_CATS  = new Set(['constraint','goal','definition','assumption','environment']);
+
+  function typeBadge(type) {
+    const raw = type || 'untyped';
+    const safe = KNOWN_TYPES.has(raw) ? raw : 'untyped';
+    return `<span class="badge badge-${safe}">${escapeHtml(raw)}</span>`;
+  }
+
+  function ltmBadge(status) {
+    if (status === 'promoted') return `<span class="badge badge-promoted">promoted</span>`;
+    if (status === 'candidate') return `<span class="badge badge-candidate">candidate</span>`;
+    return `<span class="badge badge-legacy">legacy</span>`;
+  }
+
+  function categoryBadge(cat) {
+    const raw = cat || 'constraint';
+    const safe = KNOWN_CATS.has(raw) ? raw : 'constraint';
+    return `<span class="badge badge-${safe}">${escapeHtml(raw)}</span>`;
+  }
+
+  function efficiencyClass(e) {
+    if (e === 0) return 'none';
+    if (e >= 5) return 'great';
+    if (e >= 1) return 'ok';
+    return 'poor';
+  }
+
+  function efficiencyLabel(e) {
+    if (e === 0) return 'no data yet';
+    if (e >= 5) return `${e}x — excellent`;
+    if (e >= 1) return `${e}x — positive`;
+    return `${e}x — negative ROI`;
+  }
+
+  // ── Fetch helpers ────────────────────────────────────────
+  async function fetchJSON(path) {
+    const r = await fetch(API + path);
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  }
+
+  // ── Update status ────────────────────────────────────────
+  function setOnline(ok) {
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    dot.className = 'status-dot ' + (ok ? 'online' : 'offline');
+    txt.textContent = ok ? 'online' : 'offline';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBanner');
+    el.textContent = msg;
+    el.classList.add('visible');
+    setTimeout(() => el.classList.remove('visible'), 6000);
+  }
+
+  // ── Render stats ─────────────────────────────────────────
+  function renderStats(s) {
+    document.getElementById('statTotal').textContent = fmt(s.memory_count);
+    document.getElementById('statBackend').textContent = `backend: ${s.backend}`;
+    document.getElementById('statPromoted').textContent = fmt(s.ltm_promoted_count);
+    const pct = s.memory_count > 0 ? Math.round(s.ltm_promoted_count / s.memory_count * 100) : 0;
+    document.getElementById('statPromotedPct').textContent = `${pct}% of total`;
+    document.getElementById('statCandidates').textContent = fmt(s.ltm_candidate_count);
+    document.getElementById('statThreshold').textContent = `threshold: ${s.ltm_base_threshold ?? s.importance_threshold}`;
+    document.getElementById('statStm').textContent = fmt(s.stm_count);
+    document.getElementById('statAutoScore').textContent = `auto-score: ${s.auto_score ? 'on' : 'off'}`;
+  }
+
+  // ── Render types donut ───────────────────────────────────
+  function renderTypesChart(typeMap) {
+    const labels = Object.keys(typeMap);
+    const data = labels.map(l => typeMap[l]);
+    const colors = labels.map(l => PALETTE[l] || '#404060');
+
+    // Legend
+    const legend = document.getElementById('typesLegend');
+    const total = data.reduce((a, b) => a + b, 0);
+    legend.innerHTML = labels.map((l, i) => `
+      <div class="legend-item">
+        <div class="legend-left">
+          <div class="legend-dot" style="background:${escapeHtml(colors[i])}"></div>
+          <span class="legend-label">${escapeHtml(l)}</span>
+        </div>
+        <span class="legend-count">${Number(data[i])}</span>
+      </div>
+    `).join('');
+
+    if (typesChart) {
+      typesChart.data.labels = labels;
+      typesChart.data.datasets[0].data = data;
+      typesChart.data.datasets[0].backgroundColor = colors;
+      typesChart.update('none');
+      return;
+    }
+
+    typesChart = new Chart(document.getElementById('typesChart'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors,
+          borderColor: '#0d0d18',
+          borderWidth: 3,
+          hoverOffset: 4,
+        }],
+      },
+      options: {
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw/total*100)}%)`,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // ── Render lifecycle bar chart ───────────────────────────
+  function renderLifecycleChart(s) {
+    const labels = ['Promoted', 'Candidates', 'STM Active'];
+    const data   = [s.ltm_promoted_count, s.ltm_candidate_count, s.stm_count];
+    const colors = ['rgba(52,211,153,0.85)', 'rgba(245,158,11,0.85)', 'rgba(123,111,221,0.85)'];
+
+    if (lifecycleChart) {
+      lifecycleChart.data.datasets[0].data = data;
+      lifecycleChart.update('none');
+      return;
+    }
+
+    lifecycleChart = new Chart(document.getElementById('lifecycleChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Count',
+          data,
+          backgroundColor: colors,
+          borderRadius: 4,
+          borderSkipped: false,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: { color: '#1f1f35' },
+            ticks: { color: '#7070a0' },
+            border: { color: '#1f1f35' },
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: '#8888aa', font: { size: 12 } },
+            border: { display: false },
+          },
+        },
+      },
+    });
+  }
+
+  // ── Render token economics ───────────────────────────────
+  function renderTokens(t) {
+    document.getElementById('tokenDiscovery').textContent = fmt(t.discovery_tokens);
+    document.getElementById('tokenRead').textContent = fmt(t.read_tokens);
+    document.getElementById('tokenEfficiency').textContent = t.efficiency > 0 ? `${t.efficiency}x` : '—';
+
+    const cls = efficiencyClass(t.efficiency);
+    document.getElementById('tokenBadge').innerHTML =
+      `<span class="efficiency-badge ${cls}">${efficiencyLabel(t.efficiency)}</span>`;
+
+    const max = Math.max(t.discovery_tokens, t.read_tokens, 1);
+    document.getElementById('barDiscovery').style.width = `${(t.discovery_tokens / max * 100).toFixed(1)}%`;
+    document.getElementById('barRead').style.width = `${(t.read_tokens / max * 100).toFixed(1)}%`;
+    document.getElementById('barDiscoveryNum').textContent = fmt(t.discovery_tokens);
+    document.getElementById('barReadNum').textContent = fmt(t.read_tokens);
+  }
+
+  // ── Render memories table ────────────────────────────────
+  function renderMemories(data) {
+    const mems = data.memories || [];
+    document.getElementById('memCount').textContent = `${data.total ?? mems.length} total`;
+
+    const container = document.getElementById('memoriesTable');
+    if (!mems.length) {
+      container.innerHTML = '<div class="empty-state">No memories stored yet</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Memory</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Score</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${mems.map(m => `
+            <tr>
+              <td><div class="mem-content" title="${escapeHtml(m.memory)}">${escapeHtml(m.memory)}</div></td>
+              <td>${typeBadge(m.type)}</td>
+              <td>${ltmBadge(m.ltm_status)}</td>
+              <td><span class="score-pill">${m.final_score != null ? m.final_score.toFixed(2) : '—'}</span></td>
+              <td style="white-space:nowrap;color:var(--text-dim)">${fmtDate(m.created_at)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // ── Render STM list ──────────────────────────────────────
+  function renderSTM(items) {
+    document.getElementById('stmCount').textContent = `${items.length} active`;
+    const container = document.getElementById('stmList');
+
+    if (!items.length) {
+      container.innerHTML = '<div class="empty-state">No active STM items</div>';
+      return;
+    }
+
+    container.innerHTML = items.map(item => {
+      const dots = [1,2,3].map(i =>
+        `<div class="utility-dot ${i <= item.utility_score ? 'filled' : ''}"></div>`
+      ).join('');
+
+      return `
+        <div class="stm-item">
+          <div class="stm-item-top">
+            ${categoryBadge(item.category)}
+            <span class="stm-decay ${item.decay_turns <= 2 ? 'urgent' : ''}">
+              ${item.decay_turns}t left
+            </span>
+          </div>
+          <div class="stm-content">${escapeHtml(item.content)}</div>
+          <div class="stm-utility">${dots}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // ── Main fetch + render ──────────────────────────────────
+  async function refresh() {
+    try {
+      const [stats, tokens, memories, stm] = await Promise.all([
+        fetchJSON('/stats'),
+        fetchJSON('/stats/tokens').catch(() => ({ discovery_tokens:0, read_tokens:0, efficiency:0 })),
+        fetchJSON('/memories?limit=15'),
+        fetchJSON('/stm'),
+      ]);
+
+      setOnline(true);
+
+      renderStats(stats);
+      if (Object.keys(stats.memory_types || {}).length) {
+        renderTypesChart(stats.memory_types);
+      }
+      renderLifecycleChart(stats);
+      renderTokens(tokens);
+      renderMemories(memories);
+      renderSTM(Array.isArray(stm) ? stm : (stm.items || []));
+
+      document.getElementById('lastUpdated').textContent =
+        new Date().toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+    } catch (e) {
+      setOnline(false);
+      showError(`Failed to reach MemoVault API: ${e.message}`);
+    }
+
+    if (autoRefresh) scheduleRefresh();
+  }
+
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refresh, REFRESH_INTERVAL);
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  refresh();
+</script>
+</body>
+</html>

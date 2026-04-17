@@ -12,7 +12,7 @@ class MemoryMetadata(BaseModel):
 
     type: str | None = Field(
         default=None,
-        description="Type of memory: fact, preference, event, opinion, procedure, personal",
+        description="Type of memory: fact, preference, event, opinion, procedure, personal, project_context",
     )
     source: Literal["conversation", "manual", "document", "system"] | None = Field(
         default="conversation", description="Origin of the memory"
@@ -28,6 +28,26 @@ class MemoryMetadata(BaseModel):
         default_factory=lambda: datetime.now().isoformat(),
         description="Last update timestamp",
     )
+
+    # STM fields
+    session_id: str | None = Field(default=None, description="Session ID for STM")
+    utility_score: int | None = Field(default=None, description="STM utility score (0-3)")
+    decay_turns: int | None = Field(default=None, description="STM decay turns")
+    created_turn: int | None = Field(default=None, description="Turn when STM item was created")
+
+    # LTM lifecycle fields
+    ltm_status: str | None = Field(
+        default=None, description="LTM status: candidate or promoted"
+    )
+    ltm_scores: dict[str, float] | None = Field(
+        default=None,
+        description="LTM scoring dimensions: durability, user_specificity, reusability, cost_of_forgetting",
+    )
+    final_score: float | None = Field(default=None, description="Weighted final LTM score")
+    recall_count: int = Field(default=0, description="Number of times recalled in search")
+    last_recalled_at: str | None = Field(default=None, description="Last recall timestamp")
+    importance_score: float | None = Field(default=None, description="Promoted LTM importance")
+    half_life_days: float | None = Field(default=None, description="Half-life decay in days")
 
     model_config = ConfigDict(extra="allow")
 

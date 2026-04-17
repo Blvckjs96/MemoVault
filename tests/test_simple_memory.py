@@ -38,11 +38,11 @@ class TestSimpleMemory:
         assert memory.count() == 3
 
     def test_search(self, memory):
-        """Test searching memories."""
+        """Test searching memories with BM25 ranking."""
         items = [
             MemoryItem(memory="I like Python programming"),
             MemoryItem(memory="JavaScript is for web"),
-            MemoryItem(memory="Python is great for ML"),
+            MemoryItem(memory="Python is great for ML and Python is versatile"),
         ]
         memory.add(items)
 
@@ -51,6 +51,22 @@ class TestSimpleMemory:
         # Both Python memories should be found
         memories_text = [r.memory for r in results]
         assert any("Python" in m for m in memories_text)
+        # JavaScript-only memory should not appear
+        assert "JavaScript is for web" not in memories_text
+        # Memory with more Python mentions should rank higher (BM25 TF)
+        assert "Python" in results[0].memory
+
+    def test_search_empty(self, memory):
+        """Test searching with no memories."""
+        results = memory.search("anything")
+        assert results == []
+
+    def test_search_no_match(self, memory):
+        """Test searching with no matching results."""
+        items = [MemoryItem(memory="I like apples")]
+        memory.add(items)
+        results = memory.search("zebra")
+        assert results == []
 
     def test_get_by_id(self, memory):
         """Test getting a memory by ID."""
